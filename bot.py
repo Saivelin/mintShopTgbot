@@ -1,7 +1,10 @@
+from xml.etree.ElementTree import tostring
+from requests import patch
 import telebot
 import TOKEN
 from telebot import types
 import qrcode
+import time
 
 bot = telebot.TeleBot(TOKEN.token)
 
@@ -28,11 +31,17 @@ def func(message):
         bot.send_message(message.chat.id, text, reply_markup=markup)
     elif(message.text == "Согласен"):
         text = 'Хорошо, сейчас зарегестрирую тебя'
-        bot.send_message(message.chat.id, text, reply_markup=markup)
+        bot.send_message(message.chat.id, text)
         # Код регистрации
         text = 'Регистрация прошла успешно) ВОт твой qr код, ИНФА ПРО QR КОД И ЕГО РАБОТУ'
-        bot.send_message(message.chat.id, text, reply_markup=markup)
-        #bot.send_photo(message.chat.id, )
+        bot.send_message(message.chat.id, text)
+        id = '424'
+        img = qrcode.make('Номер телефона' + id)
+
+        path = 'qrs/' + id + '.png'
+        img.save(path)
+        photo = open(path, 'rb')
+        bot.send_photo(message.chat.id, photo)
 
 
 bot.polling(none_stop=True)
