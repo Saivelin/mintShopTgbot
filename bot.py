@@ -9,10 +9,6 @@ import sqlite3
 
 bot = telebot.TeleBot(TOKEN.token)
 
-connect = sqlite3.connect('db.sqlite')
-cursor = connect.cursor()
-cursor.execute(""" SELECT * FROM users """)
-
 
 @ bot.message_handler(commands=['start'])
 def start_message(message):
@@ -20,7 +16,8 @@ def start_message(message):
     button1 = types.InlineKeyboardButton("Да, мне есть 18")
     button2 = types.InlineKeyboardButton("Нет, мне нет 18")
     markup.add(button1, button2)
-    bot.send_message(message.chat.id, 'Добро пожаловать. Я преставляю магазин MintShop. У меня ты можешь получить свой qr код с которым поделишься с друзьями, получишь бонусы и сможешь потратить их в нашем магазине по адресу: г. Нижний новгород, б. Заречный 2, ТЦ Корона, 2 этаж. Покупки в нашем магазине можно осуществлять только после совершеннолетия. Тебе есть 18?', reply_markup=markup)
+    bot.send_message(
+        message.chat.id, 'Добро пожаловать. Я преставляю магазин MintShop. У меня ты можешь получить свой qr код с которым поделишься с друзьями, получишь бонусы и сможешь потратить их в нашем магазине по адресу: г. Нижний новгород, б. Заречный 2, ТЦ Корона, 2 этаж. Покупки в нашем магазине можно осуществлять только после совершеннолетия. Тебе есть 18?', reply_markup=markup)
 
 
 @ bot.message_handler(content_types=['text'])
@@ -38,17 +35,27 @@ def func(message):
 
 @bot.message_handler(content_types=['contact'])
 def contact(message):
-    print(message.contact.phone_number)
+    pn = message.contact.phone_number
+    print(pn)
     text = 'Хорошо, сейчас зарегестрирую тебя'
     bot.send_message(message.chat.id, text)
-    # Код регистрации
-    text = 'Регистрация прошла успешно) ВОт твой qr код, ИНФА ПРО QR КОД И ЕГО РАБОТУ'
-    bot.send_message(message.chat.id, text +
-                     '. Твой номер')
-    id = '428'
-    img = qrcode.make(message.contact.phone_number + id)
+    connect = sqlite3.connect('db.sqlite')
+    cursor = connect.cursor()
+    id = int(message.chat.id)
+    print(id)
+    user = cursor.execute(
+        f"INSERT INTO users (id, phoneNum, bonus) VALUES ('{id}','{pn}', 0)")
+    #user = cursor.fetchall()
+    # print((user[1][0]))
+    connect.commit()
+    text = 'Регистрация прошла успешно) ВОт твой qr код, ИНФА ПРО QR КОД И ЕГО РАБОТУ. Твой номер: '
+    bot.send_message(message.chat.id, text + pn)
+    #user = cursor.fetchall()
+    # print((user[1][0]))
+    #id = tostring(message.chat.id)
+    img = qrcode.make(message.contact.phone_number)
 
-    path = 'qrs/' + id + '.png'
+    path = 'qrs/' + message.chat.id + '.png'
     img.save(path)
     photo = open(path, 'rb')
     bot.send_photo(message.chat.id, photo)
