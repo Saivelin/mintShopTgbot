@@ -9,7 +9,7 @@ import re
 import time
 
 usr_commands = ['/start', '/menu', '/showqr', '/showbonus']
-adm_commands = ['/addbonus', 'subtractbonus']
+adm_commands = ['/addbonus', '/subtractbonus']
 db_users_name = 'db.sqlite'
 bot = telebot.TeleBot(TOKEN.token)
 
@@ -83,11 +83,13 @@ def mainMenu(message):
     # генерация кнопок (а лучше просто месседж кинуть, будет ахуенно)
     # заглушка
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    button1 = types.InlineKeyboardButton("/start")
-    button2 = types.InlineKeyboardButton("/menu")
-    button3 = types.InlineKeyboardButton("/showqr")
-    button4 = types.InlineKeyboardButton("/showbonus")
-    markup.add(button1, button2, button3, button4)
+    for i in range(0, len(usr_commands)):
+        button = types.InlineKeyboardButton(usr_commands[i])
+        markup.add(button)
+    if (check_usr_or_admin(message)):
+        for i in range(0, len(adm_commands)):
+            button = types.InlineKeyboardButton(adm_commands[i])
+            markup.add(button)
     bot.send_message(message.chat.id, "Меню", reply_markup=markup)
 
 @bot.message_handler(commands=['showqr'])
@@ -124,10 +126,12 @@ def check_usr_or_admin(message):
     curs = con.cursor()
     curs.execute('SELECT role FROM users WHERE id = ?', (message.chat.id,))
     usr_role = re.sub("[(|)|,]", "", str(curs.fetchone()))
-    if usr_role != 'admin':
+    print(usr_role)
+    if usr_role != '\'admin\'':
         bot.send_message(message.chat.id, 'Вы не являетесь администратором')
-        mainMenu(message)
-        return
+        return False
+    bot.send_message(message.chat.id, 'Вы являетесь администратором')
+    return True
 
 @bot.message_handler(commands=['addbonus'])
 def add_bonus(message):
