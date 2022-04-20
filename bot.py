@@ -1,3 +1,4 @@
+import imp
 from xml.etree.ElementTree import tostring
 from requests import patch, request
 import TOKEN
@@ -7,11 +8,15 @@ import qrcode
 import sqlite3
 import re
 import time
+import cv2
+import PIL
+import os
 
 usr_commands = ['/start', '/menu', '/showqr', '/showbonus']
 adm_commands = ['/addbonus', '/subtractbonus']
 db_users_name = 'db.sqlite'
 bot = telebot.TeleBot(TOKEN.token)
+
 
 @ bot.message_handler(commands=['start'])
 def start_message(message):
@@ -34,6 +39,7 @@ def start_message(message):
     msg = bot.reply_to(message, text, reply_markup=markup)
     bot.register_next_step_handler(msg, check_age)
 
+
 def check_age(message):
 
     if(message.text == "Нет, мне нет 18"):
@@ -49,9 +55,11 @@ def check_age(message):
         msg = bot.reply_to(message, text, reply_markup=markup)
         bot.register_next_step_handler(msg, check_text_answer)
 
+
 def check_text_answer(message):
     if message.text == "Не согласен":
         bot.send_message(message.chat.id, "Нажимай /start если передумаешь)")
+
 
 @bot.message_handler(content_types=['contact'])
 def try_add_contact(message):
@@ -67,7 +75,7 @@ def try_add_contact(message):
     curs.execute("SELECT phoneNum FROM users WHERE phoneNum = ?", (pn,))
     usr = curs.fetchone()
 
-    if usr is None: # регистрация (такого пользователя нет)
+    if usr is None:  # регистрация (такого пользователя нет)
         curs.execute(
             f"INSERT INTO users (id, phoneNum, bonus, role) VALUES ('{id}','{pn}', 0, 'user')")
         text = 'Регистрация прошла успешно)'
@@ -77,6 +85,7 @@ def try_add_contact(message):
 
     msg = bot.send_message(message.chat.id, text)
     mainMenu(msg)
+
 
 @bot.message_handler(commands=['menu'])
 def mainMenu(message):
@@ -91,6 +100,7 @@ def mainMenu(message):
             button = types.InlineKeyboardButton(adm_commands[i])
             markup.add(button)
     bot.send_message(message.chat.id, "Меню", reply_markup=markup)
+
 
 @bot.message_handler(commands=['showqr'])
 def show_qr(message):
@@ -113,6 +123,7 @@ def show_qr(message):
     text = "Вот твой qr код, ИНФА ПРО QR КОД И ЕГО РАБОТУ. \nТвой номер: "
     bot.send_message(message.chat.id, text + pn)
 
+
 @bot.message_handler(commands=['showbonus'])
 def show_bonus(message):
     con = sqlite3.connect(db_users_name)
@@ -120,6 +131,7 @@ def show_bonus(message):
     curs.execute("SELECT bonus FROM users WHERE id = ?", (message.chat.id,))
     usr_bonus = str(curs.fetchone())
     bot.send_message(message.chat.id, re.sub("[(|)|,]", "", usr_bonus))
+
 
 def check_usr_or_admin(message):
     con = sqlite3.connect(db_users_name)
@@ -133,15 +145,52 @@ def check_usr_or_admin(message):
     bot.send_message(message.chat.id, 'Вы являетесь администратором')
     return True
 
+
 @bot.message_handler(commands=['addbonus'])
 def add_bonus(message):
     check_usr_or_admin(message)
+
 
 @bot.message_handler(commands=['subtractbonus'])
 def subtract_bonus(message):
     check_usr_or_admin(message)
 
-#def enter_usr_chat_id(message):
-    
+
+@bot.message_handler(content_types=['photo'])
+def handle_docs_photo(message):
+    con = sqlite3.connect(db_users_name)
+    curs = con.cursor()
+    curs.execute('SELECT role FROM users WHERE id = ?', (message.chat.id,))
+    usr_role = re.sub("[(|)|,]", "", str(curs.fetchone()))
+    print(usr_role)
+    if usr_role == '\'admin\'':
+        from pathlib import Path
+        Path(f'files/{message.chat.id}/').mkdir(parents=True, exist_ok=True)
+        if message.content_type == 'photo':
+            file_info = bot.get_file(
+                message.photo[len(message.photo) - 1].file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            src = f'files/{message.chat.id}/' + \
+                file_info.file_path.replace('photos/', '')
+            with open(src, 'wb') as new_file:
+                new_file.write(downloaded_file)
+            # def enter_usr_chat_id(message):
+            # Name of the QR Code Image file
+            filename = "photo_2022-04-19_23-30-19.jpg"
+            # read the QRCODE image
+            image = cv2.imread(src)
+            # initialize the cv2 QRCode detector
+            detector = cv2.QRCodeDetector()
+            # detect and decode
+            data, vertices_array, binary_qrcode = detector.detectAndDecode(
+                image)
+            # if there is a QR code
+            # print the data
+            if vertices_array is not None:
+                bot.send_message(message.chat.id, "qr code")
+                bot.send_message(message.chat.id, data)
+            else:
+                print("There was some error")
+
 
 bot.polling(none_stop=True)
