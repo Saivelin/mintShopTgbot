@@ -13,6 +13,7 @@ adm_commands = ['/addbonus', '/subtractbonus']
 db_users_name = 'db.sqlite'
 bot = telebot.TeleBot(TOKEN.token)
 
+
 @ bot.message_handler(commands=['start'])
 def start_message(message):
     con = sqlite3.connect(db_users_name)
